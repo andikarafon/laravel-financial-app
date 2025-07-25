@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Transaction extends Model
 {
@@ -54,5 +55,14 @@ class Transaction extends Model
         return $query->whereHas('category', function($q) {
             $q->where('type', 'expense');
         });
+    }
+
+    public function getImageUrlAttribute()
+    {
+        if ($this->image) {
+            return Storage::url($this->image);
+        }
+
+        return null;
     }
 }
