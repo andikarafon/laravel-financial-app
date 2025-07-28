@@ -91,7 +91,7 @@ class EditTransaction extends EditRecord
                                     }
                             }),
                         
-                        Forms\Components\Textarea::make('gemisi_json_data')
+                        Forms\Components\Textarea::make('gemini_json_data')
                             ->label('Data JSON')
                             ->rows(10)
                             ->disabled()
