@@ -16,6 +16,8 @@ class EditTransaction extends EditRecord
 {
     protected static string $resource = TransactionResource::class;
 
+    public ?array $geminiData = null;
+
     protected static ?string $title = 'Edit Transaksi';
 
     public function form(Form $form): Form
@@ -84,7 +86,9 @@ class EditTransaction extends EditRecord
                             ->columnSpanFull()
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (get $get, Set $set, ?string $state) {
-
+                                    if (!empty($state)) {
+                                        $this->processOcrWithGemini($state, $set);
+                                    }
                             }),
                         
                         Forms\Components\Textarea::make('gemisi_json_data')
@@ -98,9 +102,10 @@ class EditTransaction extends EditRecord
                                 ->label('Terapkan data AI')
                                 ->icon('heroicon-o-check')
                                 ->color('success')
-                                ->visible(fn () => !empty($this->geminiData) && isset($this->geminiData['parsed_data']))
+                                ->visible(fn () => !empty($this->geminiData) && isset($this->geminiData['json_data']))
                                 ->action(function (Set $set) {
-
+                                    //tambahan ini
+                                    $this->applyGeminiDataToForm($set);
                                 }),    
                         ])->columnSpanFull()
                     ]),
@@ -159,6 +164,95 @@ class EditTransaction extends EditRecord
                                 ->live() 
                         ]),
              ]);
+    }
+
+    //process ocr with gemini
+    private function processOcrWithGemini(string $ocrText, Set $set): void
+    {
+        try {
+            $geminiService = app(GeminiService::class);
+            $result = $geminiService->extractTransactionData($ocrText);
+
+            $this->geminiData = $result;
+
+            if ($result['success']) {
+                //update form field dengan hasil
+                $set('gemini_json_data', json_encode($result['json_data']) ?? 'Tidak ada data JSON Valid');
+
+                Notification::make()
+                    ->success()
+                    ->title('OCR Berhasi di proses dengan AI')
+                    ->body('Data Transaksi telah di extract. Klik "Terapkan data AI" untuk menggunakan data tersebut.')
+                    ->send();
+            } else {
+                $set('gemini_json_data', 'Error: ' . $result['error']);
+
+                Notification::make()
+                    ->danger()
+                    ->title('Gagal memproses OCR')
+                    ->body($result['error'])
+                    ->send();
+            }
+
+        } catch(\Exception $e) {
+                Notification::make()
+                    ->danger()
+                    ->title('Error')
+                    ->body('Terjadi Kesalahan: ' . $e->getMessage())
+                    ->send();
+
+        }
+    }
+
+
+    private function applyGeminiDataToForm(Set $set): void
+    {
+        if (empty($this->geminiData) || !isset($this->geminiData['json_data'])) {
+            return;
+        }
+
+        $data = $this->geminiData['json_data'];
+
+        //update form field berdasarkan data AI
+        if (!empty($data['total_amount'])) {
+            $set('amount', $data['total_amount']);
+        }
+
+        if (!empty($data['date'])) {
+            $set('date', $data['date']);
+        }
+
+        //update merchant info
+        if (!empty($data['shop_name'])) {
+            $set('merchant_name', $data['shop_name']);
+        }
+
+        if (!empty($data['address'])) {
+            $set('merchant_address', $data['address']);
+        }
+
+        //update description dengan informasi pembayaran dan info lainnya
+        $description = [];
+
+        if (!empty($data['payment_method'])) {
+            $description[] = "Pembayaran : " . $data['payment_method'];
+        }
+
+        //jika ada info tambahan, tambahkan ke description
+        if (!empty($description)) {
+            $set('description', implode(' | ', $description));
+        }
+
+        //update items dengan repeater
+        if (!empty($data['items'])) {
+            $set('items', $data['items']);
+        }
+
+        Notification::make()
+                    ->success()
+                    ->title('Data AI telah diterapkan')
+                    ->body('Data dari AI telah digunakan untuk mengisi Form termasuk items')
+                    ->send();
     }
 
     protected function getHeaderActions(): array
