@@ -99,7 +99,7 @@ class EditTransaction extends EditRecord
                         
                         Forms\Components\Actions::make([
                             Forms\Components\Actions\Action::make('applyGeminiData')
-                                ->label('Terapkan data AI')
+                                ->label('Terapkan data A.I')
                                 ->icon('heroicon-o-check')
                                 ->color('success')
                                 ->visible(fn () => !empty($this->geminiData) && isset($this->geminiData['json_data']))
