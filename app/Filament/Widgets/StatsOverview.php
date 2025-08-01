@@ -33,6 +33,7 @@ class StatsOverview extends BaseWidget
             $totalIncome = Transaction::income()
                 ->whereBetween('date', [$startDate, $endDate])
                 ->sum('amount');
+
             //total expense for selected month/year
             $totalExpense = Transaction::expense()
                 ->whereBetween('date', [$startDate, $endDate])
@@ -66,9 +67,6 @@ class StatsOverview extends BaseWidget
                     ->color($balance >= 0 ? 'success' : 'danger')
                     ->icon($balance >= 0 ? 'heroicon-o-arrow-up' : 'heroicon-o-arrow-down'),
             ];
-
-
-
 
             return [
 
